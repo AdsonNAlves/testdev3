@@ -27,19 +27,13 @@ sudo apt install podman -y
     ├── Makefile
     └── README.md
 
-# ⚙️ Automático Container
-
-### Se o container existir, apenas gere o arquivo
-
-### Se ele não existir, crie-o novamente:
+# Inicialização Container
 
 ``` bash
 podman run -d --name raspi-vision-api_container -p 8000:8000 localhost/raspi-vision-api:latest
 ```
 
-## 🔧 Gere o arquivo Systemd
-
-*(sem sudo, pois o container é rootless)*
+## Arquivo Systemd
 
 ``` bash
 podman generate systemd --name raspi-vision-api_container --new --files
@@ -54,7 +48,7 @@ systemctl --user enable container-raspi-vision-api_container.service
 systemctl --user start container-raspi-vision-api_container.service
 ```
 
-## 🧷 Habilite o "lingering" para o seu usuário
+## "lingering" 
 
 ``` bash
 sudo loginctl enable-linger $USER
