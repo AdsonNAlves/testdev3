@@ -3,11 +3,11 @@
 Este projeto fornece uma API FastAPI embarcada na Raspberry Pi, capaz
 de:
 
--   Detectar objetos em imagens\
+-   Detectar objetos em imagens
 -   Rodar container Podman automático ao ligar a rasp\
 -   Makefile
 
-## 🚀 Requisitos
+## Requisitos
 
 -   Raspberry Pi 4 (4GB ou 8GB)\
 -   Raspberry Pi OS 64 bits ou Ubuntu ARM64\
@@ -17,7 +17,7 @@ de:
 sudo apt install podman -y
 ```
 
-## 📦 Estrutura do Projeto
+## Estrutura do Projeto
 
     .
     ├── app/
