@@ -14,7 +14,6 @@ help:
 	@echo "  make logs        - Mostrar logs em tempo real"
 	@echo "  make restart     - Reiniciar o container"
 	@echo "  make shell       - Entrar no shell do container"
-	@echo "  make push        - Enviar imagem para o Docker Hub/Registry"
 	@echo ""
 
 # ------- BUILD -------
@@ -40,7 +39,3 @@ restart: stop run
 # ------- SHELL -------
 shell:
 	podman exec -it $(CONTAINER_NAME) /bin/bash
-
-# ------- PUSH -------
-push:
-	podman push $

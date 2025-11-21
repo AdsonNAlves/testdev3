@@ -4,10 +4,8 @@ Este projeto fornece uma API FastAPI embarcada na Raspberry Pi, capaz
 de:
 
 -   Detectar objetos em imagens
--   Contar pessoas
--   Gerar previsões simples em tempo real
--   Expor endpoints REST acessíveis via rede local
--   Rodar totalmente em um container Podman
+-   Rodar container Podman Automatico ao ligar a rasp
+-   Makefile 
 
 ## 🚀 Requisitos
 
@@ -31,50 +29,21 @@ de:
     ├── Makefile
     └── README.md
 
-## 🛠️ Construir o container
 
-    make build
+# automatico container
 
-## ▶️ Rodar o container
+# Se o container existir, apenas gere o arquivo
+# Se ele não existir, crie-o novamente:
+# podman run -d --name raspi-vision-api_container -p 8000:8000 localhost/raspi-vision-api:latest
 
-    make run
+# GERE O ARQUIVO SYSTEMD (sem sudo, pois o container é rootless)
+podman generate systemd --name raspi-vision-api_container --new --files
 
-A API ficará acessível em:
+mkdir -p ~/.config/systemd/user
+mv container-raspi-vision-api_container.service ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable container-raspi-vision-api_container.service
+systemctl --user start container-raspi-vision-api_container.service
 
-    http://RASPBERRY_IP:8000/docs
-
-## 🛑 Parar o container
-
-    make stop
-
-## 🔍 Ver logs
-
-    make logs
-
-## 🔥 Endpoints
-
-### Healthcheck
-
-    GET /health
-
-### Detectar objetos
-
-    POST /detect/image
-
-### Contar pessoas
-
-    POST /detect/people
-
-### Previsão simples
-
-    GET /predict/live
-
-## 📷 Upload de imagens
-
-Via curl:
-
-    curl -X POST -F "file=@imagem.jpg" http://testvison:8000/detect/image
-
-## 📄 Licença
-
-MIT
+## Habilite o "lingering" para o seu usuário
+sudo loginctl enable-linger $USER
