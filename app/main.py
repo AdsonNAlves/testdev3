@@ -1,59 +1,89 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.responses import JSONResponse
+from fastapi import FastAPI
 from ultralytics import YOLO
+from PIL import Image
+import requests
+import io
+import time
 import cv2
 import numpy as np
+from fastapi.responses import StreamingResponse
 
-app = FastAPI(title="Raspberry Pi Vision API")
+app = FastAPI()
 
+# Carrega o modelo pré-treinado padrão da Ultralytics
 model = YOLO("yolov8n.pt")
 
-def count_people(results):
-    count = 0
-    for r in results:
-        for box in r.boxes:
-            if int(box.cls[0]) == 0:
-                count += 1
-    return count
 
-@app.get("/health")
-def health_check():
-    return {"status": "ok", "device": "Raspberry Pi 4"}
+@app.get("/detect/imgjson")
+async def detect_image_json(url: str, confidence: float = 0.8):
+    # Download da imagem
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    image = Image.open(io.BytesIO(response.content)).convert("RGB")
 
-@app.post("/detect/image")
-async def detect_image(file: UploadFile = File(...)):
-    contents = await file.read()
-    img_array = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    start_time = time.time()
 
-    results = model(img, verbose=False)
-    boxes = results[0].boxes
+    # Inferência
+    results = model(image, conf=confidence)  
+    result = results[0]
 
-    detections = [{
-        "class": model.names[int(box.cls[0])],
-        "confidence": float(box.conf[0]),
-        "bbox": box.xyxy[0].tolist()
-    } for box in boxes]
+    detections = []
+    class_counts = {}
 
-    return JSONResponse(content={
-        "objects_detected": len(detections),
-        "detections": detections
-    })
+    for i, box in enumerate(result.boxes):
+        cls_id = int(box.cls)
+        cls_name = model.names[cls_id]
+        conf = float(box.conf)
 
-@app.post("/detect/people")
-async def detect_people(file: UploadFile = File(...)):
-    contents = await file.read()
-    img_array = np.frombuffer(contents, np.uint8)
-    img = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        # Contagem
+        class_counts[cls_name] = class_counts.get(cls_name, 0) + 1
 
-    results = model(img, verbose=False)
-    total_people = count_people(results)
+        # Lista de detecções
+        detections.append({
+            "id": i,
+            "class_id": cls_id,
+            "class_name": cls_name,
+            "confidence": conf,
+            "bbox": {
+                "xmin": float(box.xyxy[0][0]),
+                "ymin": float(box.xyxy[0][1]),
+                "xmax": float(box.xyxy[0][2]),
+                "ymax": float(box.xyxy[0][3]),
+            }
+        })
 
-    return {"people_count": total_people}
+    infer_time = int((time.time() - start_time) * 1000)
 
-@app.get("/predict/live")
-def live_prediction():
-    import random
-    value = random.randint(0, 10)
-    prediction = value + random.uniform(-1, 1)
-    return {"current": value, "predicted_5s": prediction}
+    return {
+        "image_url": url,
+        "detections": detections,
+        "metadata": {
+            "model": "yolov8n.pt",
+            "classes_model": model.names,
+            "classes_detect": list(set([d["class_name"] for d in detections])),
+            "bbox_format": "xyxy",
+        },
+        "confidence_min": confidence,
+        "quant_detect": class_counts,
+        "inference_time_ms": infer_time
+    }
+
+
+@app.get("/detect/imgpng")
+async def detect_imgpng(url: str, confidence: float = 0.8):
+    # Download da imagem
+    response = requests.get(url, timeout=10)
+    response.raise_for_status()
+    image = Image.open(io.BytesIO(response.content)).convert("RGB")
+
+    # Inferência e anotação
+    results = model(image, conf=confidence)
+    plotted = results[0].plot()  # numpy BGR
+
+    # Converter para PNG
+    img_pil = Image.fromarray(cv2.cvtColor(plotted, cv2.COLOR_BGR2RGB))
+    img_bytes = io.BytesIO()
+    img_pil.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
+
+    return StreamingResponse(img_bytes, media_type="image/png")
