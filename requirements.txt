@@ -3,5 +3,3 @@ uvicorn
 ultralytics
 opencv-python-headless
 numpy
-python-multipart
-plotly
